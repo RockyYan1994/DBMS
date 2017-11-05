@@ -1,0 +1,46 @@
+1. Basic information
+Team number (e.g., 01) : 35
+#1 Student ID : 50804874
+#1 Student Name : JUCAI YAN
+#2 Student ID : RUI GAN
+#2 Student Name : 17962491
+OS (bit) : MAC 64-bit 12.10.6
+gcc version : 4.3.2
+
+
+2. Meta-data
+
+We create these two tables are system tables, so we create them in create catalog and destroy them in delete catalog. For Table table, we name it “Table”. For Column table we name it “Column” table. We treat these two system tables as a record based file. For every   table, we use insert tuple function in RM to add table info into two system tables separately. Table table has 4 attributes, include table-id, table-name, file-name, table-access. Table-access is for check if this table can be write by Users.  Column table has 6 attributes, including table-id, attributes-name, attributes-length, attributes-type, column-position, table-access.
+
+3. Internal Record Format
+
+To achieve O(1) field access, we reserve a offset indicator in every record(int array) to store the offset for every field, every time when we need to get field info, we can according to the recordDescriptor to get the index of field. And we can using field index to calculate offset directly.
+
+We store VarChar by using a int to indicate the actual size of this Varchar. 
+
+To avoid update and delete causing rid change, we store the original RID into record and never change it. And when we update, we store a pointer (prototype same as RID) store at the original RID indicated location. Then change the slot length into 8 to indicate this data is not a record. When update record, we need to check if this page have enough space to store this changed record, if enough, offset the rest record and write new record into page and then update all slot info and page info(free space). If current page do not have enough space, insert into a new place and then update the pointer to locate the new location, then update current page info and last pointer’s page info.
+
+When delete a record we need to first find the rid located place. Then check if the slot length is 8. If it’s not, delete the record. If it’s 8 bytes, then store the pointer and then delete current pointer. After that, use the pointer to find the next location until record delete.
+
+
+4. Page Format
+
+Record is placed from the beginning of the page, and slot directory, slot number info, free space info is placed at the end of this page. we handle update by using a pointer to locate record place if current page do not have enough space to store updated record. 
+
+When delete we just follow the pointer if current location is not the real location for record. And we use slot length to indicate if this location store a record or pointer.
+After deleting a record or pointer, we change slot offset into -1.
+
+
+5. File Format
+
+We just set 3 unsigned to store three file counter(write counter, read counter, append counter).
+
+6. Implementation Detail
+
+when we scan for the next tuple(record), we start to scan from the first page and first slot. and every we find the slot is not a pointer, we use the import compare info to check if this tuple or record is valid, if it is, we package it into asked format and then send it back. If it’s not, we add the slot number and resume loop. scan will stop when it goto the last page and last slot.
+
+
+7. Other (optional)
+
+When we designed project 2, we are confused how to increase out DB systems performance and how to make it solid. we have some trouble to find the right and useful resources.
+
